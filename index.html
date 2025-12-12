@@ -2,150 +2,301 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正方形射线交互模拟</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ray Casting Simulator</title>
     <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+        }
+
         body {
             margin: 0;
             padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: pan-y; /* 允许垂直滚动，但在canvas上会拦截 */
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* 语言切换按钮 */
+        .lang-btn {
+            background: transparent;
+            border: 1px solid #e5e7eb;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .lang-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        /* 主容器 */
+        .container {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background-color: #f3f4f6;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* 防止滚动 */
-        }
-
-        .container {
-            position: relative;
-            background: white;
+            width: 100%;
+            max-width: 600px;
             padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            text-align: center;
+            box-sizing: border-box;
         }
 
-        h1 {
-            margin: 0 0 15px 0;
-            font-size: 1.2rem;
-            color: #374151;
+        /* 画布容器 */
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            /* 保持正方形比例 */
+            aspect-ratio: 1 / 1; 
+            max-width: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
         }
 
         canvas {
-            border: 2px solid #1f2937; /* 正方形边界 */
-            border-radius: 4px;
-            background-color: #ffffff;
-            touch-action: none; /* 防止手机端触摸滚动 */
-            cursor: move; /* 提示可拖动 */
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: move;
+            touch-action: none; /* 禁止Canvas上的浏览器默认触摸行为 */
         }
 
+        /* 控制面板 */
         .controls {
-            margin-top: 15px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+        }
+
+        .control-group {
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 15px;
-            padding: 10px;
-            background: #f9fafb;
-            border-radius: 8px;
+            margin-bottom: 10px;
         }
 
         label {
             font-weight: 600;
-            color: #4b5563;
-            font-size: 0.9rem;
+            min-width: 80px;
+            font-size: 0.95rem;
         }
 
         input[type="range"] {
-            width: 200px;
-            cursor: pointer;
+            flex: 1;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            appearance: none;
+            outline: none;
         }
 
-        .info {
-            margin-top: 10px;
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            font-variant-numeric: tabular-nums;
+            width: 40px;
+            text-align: right;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .hint {
             font-size: 0.85rem;
-            color: #6b7280;
+            color: var(--text-sub);
+            margin-top: 10px;
+            line-height: 1.4;
         }
-        
-        .highlight {
-            color: #2563eb;
-            font-weight: bold;
+
+        /* 页脚 */
+        footer {
+            padding: 20px;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            text-align: center;
         }
+
+        a { color: inherit; text-decoration: none; }
     </style>
 </head>
 <body>
 
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <h1 data-i18n="title">射线模拟器</h1>
+        <button class="lang-btn" id="langBtn" onclick="toggleLanguage()">
+            <span id="langIcon">🇺🇸</span> <span id="langText">English</span>
+        </button>
+    </nav>
+
+    <!-- 主内容 -->
     <div class="container">
-        <h1>射线交互模拟器</h1>
         
-        <!-- 画布：正方形区域 -->
-        <canvas id="canvas" width="400" height="400"></canvas>
-        
-        <div class="controls">
-            <label for="rotationRange">旋转射线:</label>
-            <input type="range" id="rotationRange" min="0" max="360" value="0">
-            <span id="rotationValue" style="width: 40px; text-align: left;">0°</span>
+        <!-- 画布 -->
+        <div class="canvas-wrapper">
+            <!-- 逻辑分辨率设为 800x800 以保证高清屏显示清晰 -->
+            <canvas id="canvas" width="800" height="800"></canvas>
         </div>
 
-        <div class="info">
-            操作提示: <span class="highlight">鼠标拖拽红点</span> 移动位置，<span class="highlight">滑动滑块</span> 旋转
+        <!-- 控制器 -->
+        <div class="controls">
+            <div class="control-group">
+                <label for="rotation" data-i18n="rotation">旋转</label>
+                <input type="range" id="rotation" min="0" max="360" value="0">
+                <span class="value-display" id="rotValue">0°</span>
+            </div>
+            <div class="hint" data-i18n="instruction">
+                拖拽红点移动位置，滑动滑块旋转射线。
+            </div>
         </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const rotationInput = document.getElementById('rotationRange');
-        const rotationValue = document.getElementById('rotationValue');
+    <footer>
+        <span data-i18n="footer">Created with HTML5 Canvas</span>
+    </footer>
 
-        // 配置参数
-        const SQUARE_SIZE = 400; // 正方形边长
-        const RAY_COUNT = 8;     // 射线数量
-        
-        // 状态变量
-        let state = {
-            bx: SQUARE_SIZE / 2, // B点 X坐标
-            by: SQUARE_SIZE / 2, // B点 Y坐标
-            rotation: 0,         // 旋转角度 (度)
-            isDragging: false    // 是否正在拖拽
+    <script>
+        // --- 国际化配置 (i18n) ---
+        const i18n = {
+            zh: {
+                title: "射线交互模拟",
+                rotation: "旋转角度",
+                instruction: "💡 操作提示：手指/鼠标拖拽红点移动，下方滑块旋转射线。",
+                footer: "基于 HTML5 Canvas 原生开发",
+                langBtn: "English",
+                langIcon: "🇺🇸",
+                pointLabel: "B点"
+            },
+            en: {
+                title: "Ray Casting Sim",
+                rotation: "Rotation",
+                instruction: "💡 Tip: Drag the red point to move. Use slider to rotate rays.",
+                footer: "Built with Vanilla HTML5 Canvas",
+                langBtn: "中文",
+                langIcon: "🇨🇳",
+                pointLabel: "Point B"
+            }
         };
 
-        // 初始化
+        let currentLang = 'zh'; // 默认语言
+
+        // --- 系统状态 ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const rotInput = document.getElementById('rotation');
+        const rotValue = document.getElementById('rotValue');
+
+        // 画布逻辑大小 (与HTML width属性一致)
+        const LOGICAL_SIZE = 800; 
+        const RAY_COUNT = 8;
+        
+        let state = {
+            bx: LOGICAL_SIZE / 2,
+            by: LOGICAL_SIZE / 2,
+            rotation: 0,
+            isDragging: false
+        };
+
+        // --- 核心功能 ---
+
         function init() {
-            // 响应滑块事件
-            rotationInput.addEventListener('input', (e) => {
+            // 自动检测浏览器语言
+            const browserLang = navigator.language || navigator.userLanguage; 
+            if (browserLang.toLowerCase().startsWith('en')) {
+                setLanguage('en');
+            } else {
+                setLanguage('zh');
+            }
+
+            // 事件监听
+            rotInput.addEventListener('input', (e) => {
                 state.rotation = parseInt(e.target.value);
-                rotationValue.textContent = state.rotation + '°';
+                rotValue.textContent = state.rotation + '°';
                 draw();
             });
 
-            // 鼠标/触摸事件监听 (用于拖拽B点)
-            canvas.addEventListener('mousedown', handleStart);
-            canvas.addEventListener('mousemove', handleMove);
-            window.addEventListener('mouseup', handleEnd);
+            // 鼠标/触摸事件 (支持多端)
+            addInputListeners();
 
-            canvas.addEventListener('touchstart', handleStart, {passive: false});
-            canvas.addEventListener('touchmove', handleMove, {passive: false});
-            window.addEventListener('touchend', handleEnd);
-
-            // 初始绘制
             draw();
         }
 
-        // --- 核心逻辑 ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            const texts = i18n[lang];
+            
+            // 更新 DOM 文本
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (texts[key]) el.textContent = texts[key];
+            });
 
-        /**
-         * 计算射线与正方形边界的交点距离
-         * @param {number} x 起点X
-         * @param {number} y 起点Y
-         * @param {number} angleRad 弧度角
-         * @returns {number} 距离
-         */
+            // 更新按钮
+            document.getElementById('langText').textContent = texts.langBtn;
+            document.getElementById('langIcon').textContent = texts.langIcon;
+            
+            // 重绘 Canvas (因为里面的文字也要变)
+            draw();
+        }
+
+        function toggleLanguage() {
+            setLanguage(currentLang === 'zh' ? 'en' : 'zh');
+        }
+
+        // --- 物理与绘图 ---
+
         function getRayLength(x, y, angleRad) {
-            // 归一化角度到 0-2PI
             let angle = angleRad % (Math.PI * 2);
             if (angle < 0) angle += Math.PI * 2;
 
@@ -155,48 +306,35 @@
             let distX = Infinity;
             let distY = Infinity;
 
-            // 1. 检查垂直墙壁 (Left: x=0, Right: x=400)
-            if (Math.abs(cos) > 1e-10) { // 避免除以0
-                if (cos > 0) {
-                    // 向右，碰右墙
-                    distX = (SQUARE_SIZE - x) / cos;
-                } else {
-                    // 向左，碰左墙
-                    distX = (0 - x) / cos;
-                }
+            // 垂直墙壁 (x=0, x=LOGICAL_SIZE)
+            if (Math.abs(cos) > 1e-10) {
+                distX = (cos > 0 ? LOGICAL_SIZE - x : -x) / cos;
             }
 
-            // 2. 检查水平墙壁 (Top: y=0, Bottom: y=400)
+            // 水平墙壁 (y=0, y=LOGICAL_SIZE)
             if (Math.abs(sin) > 1e-10) {
-                if (sin > 0) {
-                    // 向下，碰底墙
-                    distY = (SQUARE_SIZE - y) / sin;
-                } else {
-                    // 向上，碰顶墙
-                    distY = (0 - y) / sin;
-                }
+                distY = (sin > 0 ? LOGICAL_SIZE - y : -y) / sin;
             }
 
-            // 返回最近的交点距离
             return Math.min(distX, distY);
         }
 
         function draw() {
-            // 清空画布
-            ctx.clearRect(0, 0, SQUARE_SIZE, SQUARE_SIZE);
+            // 清空
+            ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
 
-            // 绘制网格背景 (可选，增加空间感)
+            // 绘制网格背景
             drawGrid();
 
-            // 基础角度 (弧度)
             const baseRad = state.rotation * Math.PI / 180;
             const stepRad = (Math.PI * 2) / RAY_COUNT;
 
-            ctx.font = '12px Arial';
+            // 字体设置
+            ctx.font = '24px Arial'; // 配合800px分辨率放大字体
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // 绘制每一条射线
+            // 绘制射线
             for (let i = 0; i < RAY_COUNT; i++) {
                 const angle = baseRad + i * stepRad;
                 const dist = getRayLength(state.bx, state.by, angle);
@@ -204,100 +342,127 @@
                 const endX = state.bx + Math.cos(angle) * dist;
                 const endY = state.by + Math.sin(angle) * dist;
 
-                // 1. 画线
+                // 线
                 ctx.beginPath();
                 ctx.moveTo(state.bx, state.by);
                 ctx.lineTo(endX, endY);
-                ctx.strokeStyle = '#3b82f6'; // 蓝色
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 4; // 加粗
                 ctx.stroke();
 
-                // 2. 画交点
+                // 交点
                 ctx.beginPath();
-                ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+                ctx.arc(endX, endY, 8, 0, Math.PI * 2);
                 ctx.fillStyle = '#1d4ed8';
                 ctx.fill();
 
-                // 3. 画长度文字
-                // 文字位置在射线中间偏终点处
-                const textDist = Math.min(dist - 20, dist * 0.7); 
-                if (textDist > 10) { // 如果距离太短就不显示文字了
-                    const textX = state.bx + Math.cos(angle) * textDist;
-                    const textY = state.by + Math.sin(angle) * textDist;
+                // 长度数值
+                const textDist = Math.min(dist - 40, dist * 0.7);
+                if (textDist > 20) {
+                    const tx = state.bx + Math.cos(angle) * textDist;
+                    const ty = state.by + Math.sin(angle) * textDist;
                     
-                    // 文字背景 (为了看清楚)
-                    const text = dist.toFixed(0);
+                    const text = Math.round(dist).toString();
                     const metrics = ctx.measureText(text);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.fillRect(textX - metrics.width/2 - 2, textY - 6, metrics.width + 4, 12);
+                    const padding = 10;
+                    
+                    // 文字背景
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                    ctx.beginPath();
+                    ctx.roundRect(
+                        tx - metrics.width/2 - padding, 
+                        ty - 16, 
+                        metrics.width + padding*2, 
+                        32, 
+                        8
+                    );
+                    ctx.fill();
                     
                     ctx.fillStyle = '#000';
-                    ctx.fillText(text, textX, textY);
+                    ctx.fillText(text, tx, ty);
                 }
             }
 
-            // 绘制 B点
+            // 绘制中心 B 点
             ctx.beginPath();
-            ctx.arc(state.bx, state.by, 8, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444'; // 红色
+            ctx.arc(state.bx, state.by, 16, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
             ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
             ctx.stroke();
 
             // B点标签
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText("B", state.bx, state.by - 15);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 28px Arial';
+            ctx.fillText(i18n[currentLang].pointLabel, state.bx, state.by - 35);
         }
 
         function drawGrid() {
-            ctx.strokeStyle = '#f0f0f0';
-            ctx.lineWidth = 1;
-            const step = 50;
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 2;
+            const step = 100;
             ctx.beginPath();
-            for (let x = step; x < SQUARE_SIZE; x += step) {
-                ctx.moveTo(x, 0); ctx.lineTo(x, SQUARE_SIZE);
-            }
-            for (let y = step; y < SQUARE_SIZE; y += step) {
-                ctx.moveTo(0, y); ctx.lineTo(SQUARE_SIZE, y);
+            for (let i = step; i < LOGICAL_SIZE; i += step) {
+                ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_SIZE);
+                ctx.moveTo(0, i); ctx.lineTo(LOGICAL_SIZE, i);
             }
             ctx.stroke();
         }
 
-        // --- 交互处理 ---
+        // --- 响应式输入处理 (关键) ---
 
-        function getPosFromEvent(e) {
+        function addInputListeners() {
+            // 鼠标
+            canvas.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+
+            // 触摸 (passive: false 允许 preventDefault)
+            canvas.addEventListener('touchstart', handleStart, {passive: false});
+            window.addEventListener('touchmove', handleMove, {passive: false});
+            window.addEventListener('touchend', handleEnd);
+        }
+
+        function getEventPos(e) {
+            // 获取 Canvas 在屏幕上的真实尺寸和位置
             const rect = canvas.getBoundingClientRect();
+            
+            // 获取触点或鼠标位置
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // 计算缩放比例 (逻辑分辨率 / 显示分辨率)
+            const scaleX = LOGICAL_SIZE / rect.width;
+            const scaleY = LOGICAL_SIZE / rect.height;
+
             return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
 
         function handleStart(e) {
-            const pos = getPosFromEvent(e);
-            // 检查点击位置是否在 B点 附近 (半径20px内)
+            const pos = getEventPos(e);
+            // 检测点击是否在 B 点附近 (半径放宽方便触摸)
             const dx = pos.x - state.bx;
             const dy = pos.y - state.by;
-            if (dx * dx + dy * dy < 400) { // 20*20
+            if (dx * dx + dy * dy < 2500) { // 50*50
                 state.isDragging = true;
-                e.preventDefault(); // 防止默认行为
+                e.preventDefault(); // 阻止滚动
             }
         }
 
         function handleMove(e) {
             if (!state.isDragging) return;
-            e.preventDefault();
+            e.preventDefault(); // 拖动时完全禁止页面滚动
+
+            const pos = getEventPos(e);
             
-            const pos = getPosFromEvent(e);
-            
-            // 限制在正方形内部 (留出一点边距)
-            const padding = 5;
-            state.bx = Math.max(padding, Math.min(SQUARE_SIZE - padding, pos.x));
-            state.by = Math.max(padding, Math.min(SQUARE_SIZE - padding, pos.y));
+            // 边界限制
+            const padding = 20;
+            state.bx = Math.max(padding, Math.min(LOGICAL_SIZE - padding, pos.x));
+            state.by = Math.max(padding, Math.min(LOGICAL_SIZE - padding, pos.y));
             
             draw();
         }
