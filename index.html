@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ray Casting Simulator</title>
+    <title>Ray Casting Viz</title>
     <style>
         :root {
             --primary: #3b82f6;
@@ -23,10 +23,9 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            touch-action: pan-y; /* 允许垂直滚动，但在canvas上会拦截 */
+            touch-action: pan-y;
         }
 
-        /* 顶部导航栏 */
         .navbar {
             width: 100%;
             padding: 15px 20px;
@@ -43,22 +42,24 @@
 
         h1 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
+            letter-spacing: -0.025em;
         }
 
-        /* 语言切换按钮 */
         .lang-btn {
             background: transparent;
             border: 1px solid #e5e7eb;
             padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            color: var(--text-main);
         }
 
         .lang-btn:hover {
@@ -66,7 +67,6 @@
             border-color: #d1d5db;
         }
 
-        /* 主容器 */
         .container {
             flex: 1;
             display: flex;
@@ -79,196 +79,186 @@
             box-sizing: border-box;
         }
 
-        /* 画布容器 */
         .canvas-wrapper {
             position: relative;
             width: 100%;
-            /* 保持正方形比例 */
             aspect-ratio: 1 / 1; 
             max-width: 500px;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             overflow: hidden;
             margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
         }
 
         canvas {
             width: 100%;
             height: 100%;
             display: block;
-            cursor: move;
-            touch-action: none; /* 禁止Canvas上的浏览器默认触摸行为 */
+            cursor: grab;
+            touch-action: none;
         }
+        canvas:active { cursor: grabbing; }
 
-        /* 控制面板 */
         .controls {
             background: var(--card-bg);
             padding: 20px;
             border-radius: 12px;
             width: 100%;
             max-width: 500px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             box-sizing: border-box;
+            border: 1px solid #e5e7eb;
         }
 
         .control-group {
             display: flex;
             align-items: center;
             gap: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         label {
             font-weight: 600;
-            min-width: 80px;
-            font-size: 0.95rem;
+            min-width: 60px;
+            font-size: 0.9rem;
         }
 
         input[type="range"] {
             flex: 1;
-            height: 6px;
+            height: 4px;
             background: #e5e7eb;
-            border-radius: 3px;
+            border-radius: 2px;
             appearance: none;
             outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             appearance: none;
-            width: 20px;
-            height: 20px;
-            background: var(--primary);
+            width: 18px;
+            height: 18px;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
         }
 
         .value-display {
             font-variant-numeric: tabular-nums;
-            width: 40px;
+            width: 36px;
             text-align: right;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.9rem;
             color: var(--primary);
+            font-family: monospace;
         }
 
         .hint {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-sub);
-            margin-top: 10px;
-            line-height: 1.4;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        /* 页脚 */
         footer {
-            padding: 20px;
-            font-size: 0.8rem;
+            padding: 24px;
+            font-size: 0.75rem;
             color: #9ca3af;
             text-align: center;
         }
 
-        a { color: inherit; text-decoration: none; }
+        a { color: inherit; text-decoration: none; border-bottom: 1px dotted #d1d5db; }
     </style>
 </head>
 <body>
 
-    <!-- 导航栏 -->
     <nav class="navbar">
-        <h1 data-i18n="title">射线模拟器</h1>
+        <h1 data-i18n="title">Ray Casting Viz</h1>
         <button class="lang-btn" id="langBtn" onclick="toggleLanguage()">
-            <span id="langIcon">🇺🇸</span> <span id="langText">English</span>
+            <span id="langIcon">EN</span> <span id="langText">English</span>
         </button>
     </nav>
 
-    <!-- 主内容 -->
     <div class="container">
-        
-        <!-- 画布 -->
         <div class="canvas-wrapper">
-            <!-- 逻辑分辨率设为 800x800 以保证高清屏显示清晰 -->
             <canvas id="canvas" width="800" height="800"></canvas>
         </div>
 
-        <!-- 控制器 -->
         <div class="controls">
             <div class="control-group">
-                <label for="rotation" data-i18n="rotation">旋转</label>
+                <label for="rotation" data-i18n="rotation">Angle</label>
                 <input type="range" id="rotation" min="0" max="360" value="0">
                 <span class="value-display" id="rotValue">0°</span>
             </div>
-            <div class="hint" data-i18n="instruction">
-                拖拽红点移动位置，滑动滑块旋转射线。
+            <div class="hint">
+                <span data-i18n="status">Interactive</span>
+                <span data-i18n="instruction">Drag Source • Rotate</span>
             </div>
         </div>
     </div>
 
     <footer>
-        <span data-i18n="footer">Created with HTML5 Canvas</span>
+        <span>Ray Casting Visualization &copy; 2024</span>
     </footer>
 
     <script>
-        // --- 国际化配置 (i18n) ---
         const i18n = {
             zh: {
-                title: "射线交互模拟",
-                rotation: "旋转角度",
-                instruction: "💡 操作提示：手指/鼠标拖拽红点移动，下方滑块旋转射线。",
-                footer: "基于 HTML5 Canvas 原生开发",
-                langBtn: "English",
-                langIcon: "🇺🇸",
-                pointLabel: "B点"
+                title: "光线投射演示",
+                rotation: "角度",
+                status: "交互模式",
+                instruction: "拖拽光源 • 滑动旋转",
+                langBtn: "中文",
+                langIcon: "中",
+                pointLabel: "光源"
             },
             en: {
-                title: "Ray Casting Sim",
-                rotation: "Rotation",
-                instruction: "💡 Tip: Drag the red point to move. Use slider to rotate rays.",
-                footer: "Built with Vanilla HTML5 Canvas",
-                langBtn: "中文",
-                langIcon: "🇨🇳",
-                pointLabel: "Point B"
+                title: "Ray Casting Viz",
+                rotation: "Angle",
+                status: "Interactive",
+                instruction: "Drag Source • Rotate",
+                langBtn: "English",
+                langIcon: "EN",
+                pointLabel: "Source"
             }
         };
 
-        let currentLang = 'zh'; // 默认语言
-
-        // --- 系统状态 ---
+        let currentLang = 'zh';
+        
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const rotInput = document.getElementById('rotation');
         const rotValue = document.getElementById('rotValue');
 
-        // 画布逻辑大小 (与HTML width属性一致)
         const LOGICAL_SIZE = 800; 
         const RAY_COUNT = 8;
         
         let state = {
-            bx: LOGICAL_SIZE / 2,
-            by: LOGICAL_SIZE / 2,
-            rotation: 0,
-            isDragging: false
+            x: LOGICAL_SIZE / 2,
+            y: LOGICAL_SIZE / 2,
+            deg: 0,
+            dragging: false
         };
 
-        // --- 核心功能 ---
-
         function init() {
-            // 自动检测浏览器语言
             const browserLang = navigator.language || navigator.userLanguage; 
-            if (browserLang.toLowerCase().startsWith('en')) {
-                setLanguage('en');
-            } else {
-                setLanguage('zh');
-            }
+            setLanguage(browserLang.toLowerCase().startsWith('zh') ? 'zh' : 'en');
 
-            // 事件监听
             rotInput.addEventListener('input', (e) => {
-                state.rotation = parseInt(e.target.value);
-                rotValue.textContent = state.rotation + '°';
+                state.deg = parseInt(e.target.value);
+                rotValue.textContent = state.deg + '°';
                 draw();
             });
 
-            // 鼠标/触摸事件 (支持多端)
             addInputListeners();
-
             draw();
         }
 
@@ -276,17 +266,14 @@
             currentLang = lang;
             const texts = i18n[lang];
             
-            // 更新 DOM 文本
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (texts[key]) el.textContent = texts[key];
             });
 
-            // 更新按钮
             document.getElementById('langText').textContent = texts.langBtn;
             document.getElementById('langIcon').textContent = texts.langIcon;
             
-            // 重绘 Canvas (因为里面的文字也要变)
             draw();
         }
 
@@ -294,184 +281,137 @@
             setLanguage(currentLang === 'zh' ? 'en' : 'zh');
         }
 
-        // --- 物理与绘图 ---
-
-        function getRayLength(x, y, angleRad) {
-            let angle = angleRad % (Math.PI * 2);
-            if (angle < 0) angle += Math.PI * 2;
-
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
+        function getRayLength(x, y, deg) {
+            let rad = (deg % 360) * (Math.PI / 180);
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
             
-            let distX = Infinity;
-            let distY = Infinity;
+            // Wall intersections
+            const dx = Math.abs(cos) > 1e-10 ? (cos > 0 ? LOGICAL_SIZE - x : -x) / cos : Infinity;
+            const dy = Math.abs(sin) > 1e-10 ? (sin > 0 ? LOGICAL_SIZE - y : -y) / sin : Infinity;
 
-            // 垂直墙壁 (x=0, x=LOGICAL_SIZE)
-            if (Math.abs(cos) > 1e-10) {
-                distX = (cos > 0 ? LOGICAL_SIZE - x : -x) / cos;
-            }
-
-            // 水平墙壁 (y=0, y=LOGICAL_SIZE)
-            if (Math.abs(sin) > 1e-10) {
-                distY = (sin > 0 ? LOGICAL_SIZE - y : -y) / sin;
-            }
-
-            return Math.min(distX, distY);
+            return Math.min(dx, dy);
         }
 
         function draw() {
-            // 清空
             ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
 
-            // 绘制网格背景
-            drawGrid();
-
-            const baseRad = state.rotation * Math.PI / 180;
-            const stepRad = (Math.PI * 2) / RAY_COUNT;
-
-            // 字体设置
-            ctx.font = '24px Arial'; // 配合800px分辨率放大字体
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            // 绘制射线
-            for (let i = 0; i < RAY_COUNT; i++) {
-                const angle = baseRad + i * stepRad;
-                const dist = getRayLength(state.bx, state.by, angle);
-
-                const endX = state.bx + Math.cos(angle) * dist;
-                const endY = state.by + Math.sin(angle) * dist;
-
-                // 线
-                ctx.beginPath();
-                ctx.moveTo(state.bx, state.by);
-                ctx.lineTo(endX, endY);
-                ctx.strokeStyle = '#3b82f6';
-                ctx.lineWidth = 4; // 加粗
-                ctx.stroke();
-
-                // 交点
-                ctx.beginPath();
-                ctx.arc(endX, endY, 8, 0, Math.PI * 2);
-                ctx.fillStyle = '#1d4ed8';
-                ctx.fill();
-
-                // 长度数值
-                const textDist = Math.min(dist - 40, dist * 0.7);
-                if (textDist > 20) {
-                    const tx = state.bx + Math.cos(angle) * textDist;
-                    const ty = state.by + Math.sin(angle) * textDist;
-                    
-                    const text = Math.round(dist).toString();
-                    const metrics = ctx.measureText(text);
-                    const padding = 10;
-                    
-                    // 文字背景
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-                    ctx.beginPath();
-                    ctx.roundRect(
-                        tx - metrics.width/2 - padding, 
-                        ty - 16, 
-                        metrics.width + padding*2, 
-                        32, 
-                        8
-                    );
-                    ctx.fill();
-                    
-                    ctx.fillStyle = '#000';
-                    ctx.fillText(text, tx, ty);
-                }
-            }
-
-            // 绘制中心 B 点
-            ctx.beginPath();
-            ctx.arc(state.bx, state.by, 16, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            // B点标签
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 28px Arial';
-            ctx.fillText(i18n[currentLang].pointLabel, state.bx, state.by - 35);
-        }
-
-        function drawGrid() {
-            ctx.strokeStyle = '#e5e7eb';
+            // Subtle Grid
+            ctx.strokeStyle = '#f3f4f6';
             ctx.lineWidth = 2;
-            const step = 100;
             ctx.beginPath();
-            for (let i = step; i < LOGICAL_SIZE; i += step) {
+            for (let i = 100; i < LOGICAL_SIZE; i += 100) {
                 ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_SIZE);
                 ctx.moveTo(0, i); ctx.lineTo(LOGICAL_SIZE, i);
             }
             ctx.stroke();
+
+            const baseRad = state.deg * (Math.PI / 180);
+            const stepRad = (Math.PI * 2) / RAY_COUNT;
+
+            ctx.font = '500 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i < RAY_COUNT; i++) {
+                const angle = baseRad + i * stepRad;
+                const dist = getRayLength(state.x, state.y, angle * (180 / Math.PI));
+
+                const endX = state.x + Math.cos(angle) * dist;
+                const endY = state.y + Math.sin(angle) * dist;
+
+                // Ray Line
+                ctx.beginPath();
+                ctx.moveTo(state.x, state.y);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Endpoint
+                ctx.beginPath();
+                ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#2563eb';
+                ctx.fill();
+
+                // Label
+                if (dist > 60) {
+                    const tx = state.x + Math.cos(angle) * (dist - 45);
+                    const ty = state.y + Math.sin(angle) * (dist - 45);
+                    
+                    const text = Math.round(dist).toString();
+                    const w = ctx.measureText(text).width + 20;
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(tx - w/2, ty - 16, w, 32);
+                    // Add subtle border to text bg for clarity
+                    ctx.strokeStyle = '#e5e7eb'; 
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(tx - w/2, ty - 16, w, 32);
+                    
+                    ctx.fillStyle = '#1f2937';
+                    ctx.fillText(text, tx, ty);
+                }
+            }
+
+            // Source Point
+            ctx.beginPath();
+            ctx.arc(state.x, state.y, 14, 0, Math.PI * 2);
+            ctx.fillStyle = '#1f2937'; // Darker, more professional source color
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = '#1f2937';
+            ctx.font = '700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
+            ctx.fillText(i18n[currentLang].pointLabel, state.x, state.y - 35);
         }
 
-        // --- 响应式输入处理 (关键) ---
-
         function addInputListeners() {
-            // 鼠标
             canvas.addEventListener('mousedown', handleStart);
             window.addEventListener('mousemove', handleMove);
             window.addEventListener('mouseup', handleEnd);
 
-            // 触摸 (passive: false 允许 preventDefault)
             canvas.addEventListener('touchstart', handleStart, {passive: false});
             window.addEventListener('touchmove', handleMove, {passive: false});
             window.addEventListener('touchend', handleEnd);
         }
 
         function getEventPos(e) {
-            // 获取 Canvas 在屏幕上的真实尺寸和位置
             const rect = canvas.getBoundingClientRect();
-            
-            // 获取触点或鼠标位置
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            // 计算缩放比例 (逻辑分辨率 / 显示分辨率)
-            const scaleX = LOGICAL_SIZE / rect.width;
-            const scaleY = LOGICAL_SIZE / rect.height;
-
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (clientX - rect.left) * (LOGICAL_SIZE / rect.width),
+                y: (clientY - rect.top) * (LOGICAL_SIZE / rect.height)
             };
         }
 
         function handleStart(e) {
             const pos = getEventPos(e);
-            // 检测点击是否在 B 点附近 (半径放宽方便触摸)
-            const dx = pos.x - state.bx;
-            const dy = pos.y - state.by;
-            if (dx * dx + dy * dy < 2500) { // 50*50
-                state.isDragging = true;
-                e.preventDefault(); // 阻止滚动
+            if (Math.hypot(pos.x - state.x, pos.y - state.y) < 80) {
+                state.dragging = true;
+                e.preventDefault();
             }
         }
 
         function handleMove(e) {
-            if (!state.isDragging) return;
-            e.preventDefault(); // 拖动时完全禁止页面滚动
-
+            if (!state.dragging) return;
+            e.preventDefault();
             const pos = getEventPos(e);
-            
-            // 边界限制
-            const padding = 20;
-            state.bx = Math.max(padding, Math.min(LOGICAL_SIZE - padding, pos.x));
-            state.by = Math.max(padding, Math.min(LOGICAL_SIZE - padding, pos.y));
-            
+            const pad = 20;
+            state.x = Math.max(pad, Math.min(LOGICAL_SIZE - pad, pos.x));
+            state.y = Math.max(pad, Math.min(LOGICAL_SIZE - pad, pos.y));
             draw();
         }
 
         function handleEnd() {
-            state.isDragging = false;
+            state.dragging = false;
         }
 
-        // 启动
         init();
 
     </script>
